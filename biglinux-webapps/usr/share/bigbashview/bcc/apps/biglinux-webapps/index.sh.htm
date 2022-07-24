@@ -265,30 +265,70 @@ echo '<head>
             <!-- INICIO TABS CONTENT LIST -->
             <div id="list-tab-content" class="fc-card active">'
 
-if compgen -G ~/.local/share/applications/*-webapp-biglinux-custom.desktop >/dev/null;then
+#if compgen -G ~/.local/share/applications/*-webapp-biglinux-custom.desktop >/dev/null;then
+gawk -v development=$"Desenvolvimento" office=$"Escritório" graphics=$"Gráficos" game=$"Jogos" audiovideo=$"Multimídia" nenhum=$"Nenhum WebApp adicionado!" adicionar=$"Adicionar" ''
+######################################################################################################### Remover uma das aspas simples
 
-for desktop in ~/.local/share/applications/*-webapp-biglinux-custom.desktop;do
-  APP_CATEGORY=$(grep Categories= $desktop |sed 's|Categories=||;s|;||')
-  if [[ ! "${ARRAY_CATEGORY[*]}" =~ "$APP_CATEGORY" ]];then
-    ARRAY_CATEGORY+=($APP_CATEGORY)
-    ARRAY_CATEGORY=($(printf '%s\n' "${ARRAY_CATEGORY[@]}"|sort))
-  fi
-done
+BEGINFILE {
+# This OFS helps writing readable code on printing
+  OFS = "\n"
 
-KEEP_COUNT=0
-for i in "${ARRAY_CATEGORY[@]}";do
+# If there is no suitable .desktop file, skips to the END block
+  if ( FILENAME == "-" ) {
+    ++noinput
+    exit
+  }
+}
 
-    case $i in
-      Development)NAME_CATEGORY=$"Desenvolvimento";;
-      Office)NAME_CATEGORY=$"Escritório";;
-      Graphics)NAME_CATEGORY=$"Gráficos";;
-      Network)NAME_CATEGORY="Internet";;
-      Game)NAME_CATEGORY=$"Jogos";;
-      AudioVideo)NAME_CATEGORY=$"Multimídia";;
-      Webapps)NAME_CATEGORY="Webapps";;
-      Google)NAME_CATEGORY="Google";;
-      *)continue;;
-    esac
+/^Categories=/ {
+  app_category = gensub(/^Categories=/,"",1)
+  
+  switch ( app_category ) {
+    case /Development/:
+      name_category = development
+    case /Office/:
+      name_category = office
+    case /Graphics/:
+      name_category = graphics
+    case /Network/:
+      name_category = "Internet"
+    case /Game/:
+      name_category = game
+    case /AudioVideo/:
+      name_category = audiovideo
+    case /Webapps/:
+      name_category = "WebApps"
+    case /Google/:
+      name_category = "Google"
+    default:
+      ++wrongformat
+      nextfile
+    }
+}
+
+
+#for desktop in ~/.local/share/applications/*-webapp-biglinux-custom.desktop;do
+#  APP_CATEGORY=$(grep Categories= $desktop |sed 's|Categories=||;s|;||')
+#  if [[ ! "${ARRAY_CATEGORY[*]}" =~ "$APP_CATEGORY" ]];then
+#    ARRAY_CATEGORY+=($APP_CATEGORY)
+#    ARRAY_CATEGORY=($(printf '%s\n' "${ARRAY_CATEGORY[@]}"|sort))
+#  fi
+#done
+
+#KEEP_COUNT=0
+#for i in "${ARRAY_CATEGORY[@]}";do
+
+#    case $i in
+#      Development)NAME_CATEGORY=$"Desenvolvimento";;
+#      Office)NAME_CATEGORY=$"Escritório";;
+#      Graphics)NAME_CATEGORY=$"Gráficos";;
+#      Network)NAME_CATEGORY="Internet";;
+#      Game)NAME_CATEGORY=$"Jogos";;
+#      AudioVideo)NAME_CATEGORY=$"Multimídia";;
+#      Webapps)NAME_CATEGORY="Webapps";;
+#      Google)NAME_CATEGORY="Google";;
+#      *)continue;;
+#    esac
 
   ## CATEGORY
     echo '<div id="'$i'" class="content-section-title" style="text-align:left;">'$NAME_CATEGORY'</div>
@@ -299,6 +339,28 @@ for i in "${ARRAY_CATEGORY[@]}";do
   for desktop in ~/.local/share/applications/*-webapp-biglinux-custom.desktop;do
 
     APP_CATEGORY=$(grep Categories= $desktop |sed 's|Categories=||;s|;||')
+
+/^Icon=/ {
+  icon = gensub(/^Icon=/,"",1)
+}
+
+/^Name=/ {
+  name = gensub(/^Name=/,"",1)
+}
+
+/^Exec=/ {
+  deskexec = gensub(/^Exec=/,"",1)
+  
+  if \.local\/bin/ {
+    url = system("grep 'new-instance' "deskexec" | cut -d' ' -f9 | sed 's|\"||g'")
+    browser = "icons/firefox.svg"
+  } else if /epiphany/ {
+    url = $4
+    browser = "icons/epiphany.svg"
+  } else {
+    url = gensub(/.*app=/,"",1)
+    browser = "icons/" gensub(/^Exec=/,"",1,$1) ".svg"
+}
 
     if [ "$APP_CATEGORY" == "$i" ];then
         APP_ICON=$(grep Icon= $desktop |sed 's|Icon=||')
@@ -362,24 +424,52 @@ for i in "${ARRAY_CATEGORY[@]}";do
   ## FIM CATEGORY
 done
 
+
 else
+END {
+  if noinput {
+    print(\
+"<!-- INICIO - TELA QUANDO NÃO ENCONTRAR NENHUM WEBAPP -->",
+"              <div class=\"content-section\" style=\"margin-top: 20%;\">",
+"                <div style=\"text-align: center; margin: auto; padding: auto;\">",
+"                  <div class=\"content-section-title\" style=\"text-align: center;\">"nenhum"</div>",
+"",
+"                  <ul style=\"all: initial\">",
+"                    <li title=\"Adicionar\" style=\"all: initial\">",
+"                      <label for=\"tab1\" role=\"button\" id=\"#add-tab-content\" style=\"text-align: center; display: flex; justify-content: center;\">",
+"                        <button class=\"button\" style=\"height: 26px\">"adicionar"</button>",
+"                      </label>",
+"                    </li>",
+"                  </ul>",
+"                </div>",
+"                <!-- FIM - TELA QUANDO NÃO ENCONTRAR NENHUM WEBAPP -->",
+"              </div>")
+  exit
+}
 
-echo '<!-- INICIO - TELA QUANDO NÃO ENCONTRAR NENHUM WEBAPP -->
-              <div class="content-section" style="margin-top: 20%;">
-                <div style="text-align: center; margin: auto; padding: auto;">
-                  <div class="content-section-title" style="text-align: center;">'$"Nenhum WebApp adicionado!"'</div>
 
-                  <ul style="all: initial">
-                    <li title="Adicionar" style="all: initial">
-                      <label for="tab1" role="button" id="#add-tab-content" style="text-align: center; display: flex; justify-content: center;">
-                        <button class="button" style="height: 26px">'$"Adicionar"'</button>
-                      </label>
-                    </li>
-                  </ul>
-                </div>
-                <!-- FIM - TELA QUANDO NÃO ENCONTRAR NENHUM WEBAPP -->
-              </div>'
-fi
+#echo '<!-- INICIO - TELA QUANDO NÃO ENCONTRAR NENHUM WEBAPP -->
+#              <div class="content-section" style="margin-top: 20%;">
+#                <div style="text-align: center; margin: auto; padding: auto;">
+#                  <div class="content-section-title" style="text-align: center;">'$"Nenhum WebApp adicionado!"'</div>
+#
+#                  <ul style="all: initial">
+#                    <li title="Adicionar" style="all: initial">
+#                      <label for="tab1" role="button" id="#add-tab-content" style="text-align: center; display: flex; justify-content: center;">
+#                        <button class="button" style="height: 26px">'$"Adicionar"'</button>
+#                      </label>
+#                    </li>
+#                  </ul>
+#                </div>
+#                <!-- FIM - TELA QUANDO NÃO ENCONTRAR NENHUM WEBAPP -->
+#              </div>'
+#fi
+
+'' ~/.local/share/applications/*-webapp-biglinux-custom.desktop
+################################################################################### Remover uma das aspas simples
+# End of gawk script
+
+
 echo '
           </div>
           <!-- FIM TABS CONTENT LIST -->
